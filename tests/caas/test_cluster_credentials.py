@@ -21,7 +21,8 @@ def ready_cluster(
 ):
     uuid: str = cli.create_cluster(
         template=cluster_template,
-        template_parameter_files={"pull_secret": pull_secret_path, "ssh_public_key": ssh_public_key_path},
+        pull_secret_file=pull_secret_path,
+        ssh_public_key_file=ssh_public_key_path,
     )
     co_name: str = wait_for_cluster_order_cr(k8s=k8s_hub_client, uuid=uuid)
     try:
