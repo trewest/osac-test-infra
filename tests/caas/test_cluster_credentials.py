@@ -8,7 +8,7 @@ from tests.core.helpers import (
     wait_for_cluster_deletion,
     wait_for_cluster_grpc_removal,
     wait_for_cluster_order_cr,
-    wait_for_cluster_ready,
+    wait_for_hosted_cluster_available,
 )
 from tests.core.k8s_client import K8sClient
 from tests.core.osac_cli import OsacCLI
@@ -26,7 +26,7 @@ def ready_cluster(
     )
     co_name: str = wait_for_cluster_order_cr(k8s=k8s_hub_client, uuid=uuid)
     try:
-        wait_for_cluster_ready(k8s=k8s_hub_client, name=co_name)
+        wait_for_hosted_cluster_available(k8s=k8s_hub_client, name=co_name)
     except Exception:
         if k8s_hub_client.is_present(resource="clusterorder", name=co_name):
             cli.delete_cluster(uuid=uuid)

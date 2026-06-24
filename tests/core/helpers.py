@@ -266,6 +266,24 @@ def wait_for_cluster_ready(*, k8s: K8sClient, name: str) -> None:
     )
 
 
+def wait_for_hosted_cluster_available(*, k8s: K8sClient, name: str) -> None:
+    hc_name: str = poll_until(
+        fn=lambda: k8s.get_cluster_order_hosted_cluster_name(name=name),
+        until=lambda v: v != "",
+        retries=30,
+        delay=10,
+        description=f"HostedCluster reference for ClusterOrder {name}",
+    )
+    hc_ns: str = k8s.get_cluster_order_namespace(name=name)
+    poll_until(
+        fn=lambda: k8s.is_hosted_cluster_available(name=hc_name, namespace=hc_ns, checked=False),
+        until=lambda v: v is True,
+        retries=120,
+        delay=15,
+        description=f"HostedCluster {hc_name} Available",
+    )
+
+
 def wait_for_cluster_deletion(*, k8s: K8sClient, name: str) -> None:
     # HACK: HyperShift has multiple teardown bugs where controllers leave orphaned state
     # that deadlocks HostedCluster deletion. We force-clean on every poll iteration:

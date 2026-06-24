@@ -315,6 +315,15 @@ class K8sClient:
     def get_cluster_order_namespace(self, *, name: str) -> str:
         return self.get_jsonpath(resource="clusterorder", name=name, jsonpath="{.status.clusterReference.namespace}")
 
+    def is_hosted_cluster_available(self, *, name: str, namespace: str, checked: bool = True) -> bool:
+        output, rc = self._get(
+            "get", "hostedcluster", name, "-n", namespace, "-o", "json", checked=checked
+        )
+        if rc != 0:
+            return False
+        conditions: list[dict[str, Any]] = json.loads(output).get("status", {}).get("conditions", [])
+        return any(c["type"] == "Available" and c["status"] == "True" for c in conditions)
+
     def get_cluster_order_spec(self, *, name: str) -> dict[str, Any]:
         output = self.get_jsonpath(resource="clusterorder", name=name, jsonpath="{.spec}")
         return json.loads(output) if output else {}
