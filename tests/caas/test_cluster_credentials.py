@@ -1,15 +1,17 @@
 from __future__ import annotations
 
+from pathlib import Path
+
 import pytest
 import yaml
 
-from tests.core.grpc_client import GRPCClient
 from tests.core.helpers import (
     wait_for_cluster_deletion,
     wait_for_cluster_grpc_removal,
     wait_for_cluster_order_cr,
     wait_for_cluster_ready,
 )
+from tests.core.grpc_client import GRPCClient
 from tests.core.k8s_client import K8sClient
 from tests.core.osac_cli import OsacCLI
 
@@ -21,8 +23,8 @@ def ready_cluster(
 ):
     uuid: str = cli.create_cluster(
         template=cluster_template,
-        pull_secret_file=pull_secret_path,
-        ssh_public_key_file=ssh_public_key_path,
+        template_parameter_files={"pull_secret": pull_secret_path},
+        template_parameters={"ssh_public_key": Path(ssh_public_key_path).read_text().strip()},
     )
     co_name: str = wait_for_cluster_order_cr(k8s=k8s_hub_client, uuid=uuid)
     try:
