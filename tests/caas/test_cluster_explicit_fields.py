@@ -17,8 +17,7 @@ def cluster_with_explicit_fields(
 ):
     uuid: str = cli.create_cluster(
         template=cluster_template,
-        template_parameter_files={"pull_secret": pull_secret_path},
-        template_parameters={"ssh_public_key": Path(ssh_public_key_path).read_text().strip()},
+        template_parameter_files={"pull_secret": pull_secret_path, "ssh_public_key": ssh_public_key_path},
     )
     co_name: str | None = None
     try:
