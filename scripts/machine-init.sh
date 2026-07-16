@@ -34,6 +34,7 @@ set -euo pipefail
 ###############################################################################
 # Constants
 ###############################################################################
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 CLUSTER_TOOL_DIR="/opt/cluster-tool"
 CLUSTER_TOOL_BIN="/usr/local/bin/cluster-tool"
 RUNNER_USER="github-runner"
@@ -122,10 +123,23 @@ install_packages() {
         dnf-plugins-core \
         dnsmasq \
         python3 \
-        python3-pip
+        python3-pip \
+        virt-install
 
     # ansible-builder is needed for building AAP execution-environment images
     python3 -m pip install --quiet ansible-builder
+
+    # Agent VM storage directory for CaaS E2E
+    AGENT_STORAGE="/data/osac-storage"
+    if [[ ! -d "${AGENT_STORAGE}" ]]; then
+        mkdir -p "${AGENT_STORAGE}"
+        echo "    Created ${AGENT_STORAGE}"
+    fi
+    chown "${RUNNER_USER}:${RUNNER_USER}" "${AGENT_STORAGE}"
+
+    # Install osac-hosts-entry helper for /etc/hosts management
+    install -m 0755 "${SCRIPT_DIR}/osac-hosts-entry" /usr/local/sbin/osac-hosts-entry
+    echo "    Installed /usr/local/sbin/osac-hosts-entry"
 
     echo "    Done."
 }
@@ -207,6 +221,9 @@ Cmnd_Alias AUTH_JSON_COPY  = /usr/bin/cp ${RUNNER_HOME}/.config/containers/auth.
 Cmnd_Alias AUTH_JSON_CHMOD = /usr/bin/chmod 600 /root/.config/containers/auth.json
 Cmnd_Alias AUTH_JSON_RM    = /usr/bin/rm -f /root/.config/containers/auth.json
 
+Cmnd_Alias HOSTS_ENTRY_ADD    = /usr/local/sbin/osac-hosts-entry add * *
+Cmnd_Alias HOSTS_ENTRY_REMOVE = /usr/local/sbin/osac-hosts-entry remove *
+
 ${KUBECONFIG_COPY_ALIAS}
 
 ${KUBECONFIG_CHOWN_ALIAS}
@@ -215,6 +232,7 @@ ${RUNNER_USER} ALL=(root) NOPASSWD: CLUSTER_TOOL_FLAVORS, CLUSTER_TOOL_FLAVORS_D
     CLUSTER_TOOL_PULL, CLUSTER_TOOL_DESTROY, CLUSTER_TOOL_BOOT, CLUSTER_TOOL_CLEANUP_HAPROXY, \\
     BRIDGE_DOWN, BRIDGE_DELETE, \\
     AUTH_JSON_MKDIR, AUTH_JSON_COPY, AUTH_JSON_CHMOD, AUTH_JSON_RM, \\
+    HOSTS_ENTRY_ADD, HOSTS_ENTRY_REMOVE, \\
     KUBECONFIG_COPY, KUBECONFIG_CHOWN
 EOF
 

@@ -1,0 +1,73 @@
+#!/usr/bin/env bash
+# osac-hosts-entry -- Manage /etc/hosts entries for OSAC agent VM DNS.
+#
+# Installed by machine-init.sh to /usr/local/sbin/osac-hosts-entry.
+# Invoked via sudo by github-runner during CaaS E2E agent setup.
+#
+# Usage:
+#   osac-hosts-entry add <hostname> <ip>
+#   osac-hosts-entry remove <hostname>
+#
+# Each managed line is tagged with a trailing comment (# osac-agent-dns)
+# so remove only ever touches lines this tool added. All edits are
+# serialized via flock to prevent TOCTOU races between concurrent jobs.
+set -euo pipefail
+
+LOCK_FILE="/var/lock/osac-hosts-entry.lock"
+MARKER="# osac-agent-dns"
+HOSTS_FILE="/etc/hosts"
+
+die() { echo "ERROR: $*" >&2; exit 1; }
+
+validate_hostname() {
+    [[ "$1" =~ ^[a-zA-Z0-9]([a-zA-Z0-9.-]*[a-zA-Z0-9])?$ ]] \
+        || die "invalid hostname: $1"
+}
+
+validate_ip() {
+    [[ "$1" =~ ^[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}$ ]] \
+        || die "invalid IP address: $1"
+}
+
+cmd_add() {
+    local hostname="$1" ip="$2"
+    validate_hostname "$hostname"
+    validate_ip "$ip"
+
+    exec 9>"${LOCK_FILE}"
+    flock --exclusive 9
+
+    # Remove any existing entry for this hostname (idempotent)
+    sed -i "/${hostname}.*${MARKER}/d" "${HOSTS_FILE}"
+    echo "${ip} ${hostname} ${MARKER}" >> "${HOSTS_FILE}"
+
+    exec 9>&-
+    echo "Added: ${ip} ${hostname}"
+}
+
+cmd_remove() {
+    local hostname="$1"
+    validate_hostname "$hostname"
+
+    exec 9>"${LOCK_FILE}"
+    flock --exclusive 9
+
+    sed -i "/${hostname}.*${MARKER}/d" "${HOSTS_FILE}"
+
+    exec 9>&-
+    echo "Removed: ${hostname}"
+}
+
+case "${1:-}" in
+    add)
+        [[ $# -eq 3 ]] || die "usage: osac-hosts-entry add <hostname> <ip>"
+        cmd_add "$2" "$3"
+        ;;
+    remove)
+        [[ $# -eq 2 ]] || die "usage: osac-hosts-entry remove <hostname>"
+        cmd_remove "$2"
+        ;;
+    *)
+        die "usage: osac-hosts-entry {add <hostname> <ip> | remove <hostname>}"
+        ;;
+esac

@@ -1,0 +1,58 @@
+---
+name: E2E CaaS Full Install
+
+on:
+  pull_request:
+    branches: [main]
+  schedule:
+    - cron: "0 */12 * * *"
+  workflow_dispatch:
+    inputs:
+      test-suite:
+        description: "Test suite (caas, or empty for all)"
+        required: false
+        default: "caas"
+      test-filter:
+        description: "pytest -k filter"
+        required: false
+        default: ""
+      installer-ref:
+        description: "Branch/ref of osac-installer"
+        required: false
+        default: "main"
+      installer-repo:
+        description: "GitHub repo (owner/name) to clone osac-installer from"
+        required: false
+        default: "osac-project/osac-installer"
+      image-overrides:
+        description: "JSON mapping Helm value paths to image refs"
+        required: false
+        default: "{}"
+      osac-cli-version:
+        description: "OSAC CLI version (e.g. 0.0.73). Defaults to latest."
+        required: false
+        default: ""
+      runner-label:
+        description: "Self-hosted runner label to target"
+        required: false
+        default: ""
+
+concurrency:
+  group: e2e-caas-full-install-${{ github.event.pull_request.number || github.run_id }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  e2e-caas-full-install:
+    uses: ./.github/workflows/e2e-caas-full-install.yml
+    with:
+      test-suite: ${{ inputs.test-suite || 'caas' }}
+      test-filter: ${{ inputs.test-filter || '' }}
+      installer-ref: ${{ inputs.installer-ref || 'main' }}
+      installer-repo: ${{ inputs.installer-repo || 'osac-project/osac-installer' }}
+      image-overrides: ${{ inputs.image-overrides || '{}' }}
+      osac-cli-version: ${{ inputs.osac-cli-version || '' }}
+      runner-label: ${{ inputs.runner-label || 'osac-ci' }}
+      fork-pr-author-association: ${{ github.event.pull_request.head.repo.fork && github.event.pull_request.author_association || '' }}
+      fork-pr-author: ${{ github.event.pull_request.head.repo.fork && github.event.pull_request.user.login || '' }}
+      pr-number: ${{ github.event.pull_request.number }}
+      notify-on-failure: ${{ github.event_name == 'schedule' }}

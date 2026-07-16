@@ -8,6 +8,14 @@ set -euo pipefail
 : "${CLONE_NAME:?CLONE_NAME is required}"
 : "${E2E_IMAGE:?E2E_IMAGE is required}"
 
+# --- Destroy agent VM (created by setup-caas-agents.sh) ---
+AGENT_VM_NAME="agent-${CLONE_NAME}"
+AGENT_VM_STORAGE_DIR="${AGENT_VM_STORAGE_DIR:-/data/osac-storage}"
+echo "Destroying agent VM '${AGENT_VM_NAME}'..."
+virsh destroy "${AGENT_VM_NAME}" 2>/dev/null || true
+virsh undefine "${AGENT_VM_NAME}" 2>/dev/null || true
+rm -f "${AGENT_VM_STORAGE_DIR}/${AGENT_VM_NAME}.qcow2" "${AGENT_VM_STORAGE_DIR}/${AGENT_VM_NAME}-discovery.iso"
+
 # --- Destroy cluster clone ---
 echo "Destroying clone '${CLONE_NAME}'..."
 sudo python3 /usr/local/bin/cluster-tool destroy "${CLONE_NAME}" 2>&1 || true
